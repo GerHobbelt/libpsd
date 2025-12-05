@@ -586,27 +586,54 @@ psd_status psd_get_image_resource(psd_context * context)
 						break;
 					// (Photoshop 7.0) EXIF data 1
 					case 1058:
-					// (Photoshop 7.0) EXIF data 3
-					// http://www.pima.net/standards/it10/PIMA15740/exif.htm
-					case 1059:
 						// avoid to get the exif data for twice
-						psd_assert(context->fill_exif_data == psd_false);
+						if (context->fill_exif1_data) {
+							psd_stream_get_null(context, sizeofdata);
+							break;
+						}
 #	ifdef PSD_INCLUDDE_LIBEXIF
 						buffer = (psd_uchar *)psd_malloc(sizeofdata + sizeof(ExifHeader));
 						if (buffer == NULL)
 							return psd_status_malloc_failed;
 						psd_stream_get(context, buffer + sizeof(ExifHeader), sizeofdata);
 						memcpy(buffer, ExifHeader, sizeof(ExifHeader));
-						context->exif_data = (psd_uchar *)exif_data_new_from_data(buffer, sizeofdata + sizeof(ExifHeader));
+						context->exif1_data = (psd_uchar *)exif_data_new_from_data(buffer, sizeofdata + sizeof(ExifHeader));
 						psd_free(buffer);
-						context->fill_exif_data = psd_true;
+						context->fill_exif1_data = psd_true;
 #	else // ifdef PSD_INCLUDDE_LIBEXIF
-						context->exif_data = (psd_uchar *)psd_malloc(sizeofdata);
-						if (context->exif_data == NULL)
+						context->exif1_data = (psd_uchar *)psd_malloc(sizeofdata);
+						if (context->exif1_data == NULL)
 							return psd_status_malloc_failed;
-						psd_stream_get(context, context->exif_data, (size_t)sizeofdata);
-						context->exif_data_length = (psd_int)sizeofdata;
-						context->fill_exif_data = psd_true;
+						psd_stream_get(context, context->exif1_data, (size_t)sizeofdata);
+						context->exif1_data_length = (psd_int)sizeofdata;
+						context->fill_exif1_data = psd_true;
+#	endif // ifdef PSD_INCLUDDE_LIBEXIF
+						break;
+					// (Photoshop 7.0) EXIF data 3
+					// http://www.pima.net/standards/it10/PIMA15740/exif.htm
+					case 1059:
+						// avoid to get the exif data for twice
+						if (context->fill_exif3_data) {
+							psd_stream_get_null(context, sizeofdata);
+							break;
+						}
+						psd_assert(context->fill_exif3_data == psd_false);
+#	ifdef PSD_INCLUDDE_LIBEXIF
+						buffer = (psd_uchar *)psd_malloc(sizeofdata + sizeof(ExifHeader));
+						if (buffer == NULL)
+							return psd_status_malloc_failed;
+						psd_stream_get(context, buffer + sizeof(ExifHeader), sizeofdata);
+						memcpy(buffer, ExifHeader, sizeof(ExifHeader));
+						context->exif3_data = (psd_uchar *)exif_data_new_from_data(buffer, sizeofdata + sizeof(ExifHeader));
+						psd_free(buffer);
+						context->fill_exif3_data = psd_true;
+#	else // ifdef PSD_INCLUDDE_LIBEXIF
+						context->exif3_data = (psd_uchar *)psd_malloc(sizeofdata);
+						if (context->exif3_data == NULL)
+							return psd_status_malloc_failed;
+						psd_stream_get(context, context->exif3_data, (size_t)sizeofdata);
+						context->exif3_data_length = (psd_int)sizeofdata;
+						context->fill_exif3_data = psd_true;
 #	endif // ifdef PSD_INCLUDDE_LIBEXIF
 						break;
 						
@@ -733,9 +760,11 @@ void psd_image_resource_free(psd_context * context)
 	psd_freeif(context->url_list.items);
 
 #ifdef PSD_INCLUDDE_LIBEXIF
-	exif_data_free((ExifData *)context->exif_data);
+	exif_data_free((ExifData *)context->exif1_data);
+	exif_data_free((ExifData *)context->exif3_data);
 #else
-	psd_freeif(context->exif_data);
+	psd_freeif(context->exif1_data);
+	psd_freeif(context->exif3_data);
 #endif
 
 #ifdef PSD_INCLUDE_LIBXML
